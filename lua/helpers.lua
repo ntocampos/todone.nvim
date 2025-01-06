@@ -51,6 +51,7 @@ function helpers.create_floating_window(opts)
   })
   local close_win = function()
     vim.api.nvim_win_close(win_id, true)
+    vim.api.nvim_buf_delete(buf, { force = true })
   end
 
   helpers.set_keymap("n", "q", close_win, buf)
