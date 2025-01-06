@@ -29,16 +29,25 @@ function helpers.read_file_lines(file_path)
   return lines
 end
 
---- @param opts { width: number, height: number, lines: string[] }
+--- @param opts { width: number, height: number, lines: string[], file_path: string, title: string }
 function helpers.create_floating_window(opts)
-  local buf = vim.api.nvim_create_buf(false, true)
+  opts = opts or {}
+  local file_path = opts.file_path or ""
+  local title = opts.title or "Todone"
+
+  local buf = vim.api.nvim_create_buf(false, false)
+  if file_path ~= "" then
+    vim.api.nvim_buf_set_name(buf, file_path)
+    vim.api.nvim_set_option_value("buftype", "", { buf = buf })
+  end
+
   vim.bo[buf].filetype = "markdown"
 
   local float_width = opts.width or 80
   local float_height = opts.height or 20
   local float_row = (vim.o.lines - float_height) / 2
   local float_col = (vim.o.columns - float_width) / 2
-  local win_id = vim.api.nvim_open_win(buf, true, {
+  local win_opts = {
     relative = "editor",
     width = float_width,
     height = float_height,
@@ -46,9 +55,24 @@ function helpers.create_floating_window(opts)
     col = float_col,
     style = "minimal",
     border = "rounded",
-    title = "  Todone  ",
+    title = "  " .. title .. "  ",
     title_pos = "center",
+  }
+
+  local win_id = vim.api.nvim_open_win(buf, true, win_opts)
+  local augroup = vim.api.nvim_create_augroup("FloatingWindowAutoSave", { clear = true })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = augroup,
+    buffer = buf,
+    callback = function()
+      if file_path and vim.fn.filereadable(file_path) == 1 then
+        vim.api.nvim_command("write!")
+      end
+    end,
   })
+  vim.api.nvim_set_option_value("cursorline", true, { win = win_id })
+  vim.api.nvim_set_option_value("number", true, { win = win_id })
+
   local close_win = function()
     vim.api.nvim_win_close(win_id, true)
     vim.api.nvim_buf_delete(buf, { force = true })
@@ -68,6 +92,20 @@ end
 function helpers.check_dir_exists(dir)
   local stat = vim.loop.fs_stat(dir)
   return stat and stat.type == "directory"
+end
+
+function helpers.check_file_exists(file_path)
+  local stat = vim.loop.fs_stat(file_path)
+  return stat and stat.type == "file"
+end
+
+function helpers.create_file(file_path)
+  local file = io.open(file_path, "w")
+  if not file then
+    vim.notify("Failed to create file: " .. file_path, vim.log.levels.ERROR)
+    return
+  end
+  file:close()
 end
 
 return helpers
