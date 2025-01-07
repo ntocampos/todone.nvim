@@ -4,7 +4,7 @@ local helpers = {}
 --- @param key string
 --- @param cmd string | function
 --- @param buf number
-function helpers.set_keymap(mode, key, cmd, buf)
+function helpers.set_buffer_keymap(mode, key, cmd, buf)
   buf = buf or 0
   vim.keymap.set(mode, key, cmd, { buffer = buf })
 end
@@ -78,7 +78,7 @@ function helpers.create_floating_window(opts)
     vim.api.nvim_buf_delete(buf, { force = true })
   end
 
-  helpers.set_keymap("n", "q", close_win, buf)
+  helpers.set_buffer_keymap("n", "q", close_win, buf)
 
   local lines = opts.lines or {}
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -140,6 +140,20 @@ function helpers.create_file(file_path, date_table, opts)
 
   file:write(header)
   file:close()
+end
+
+function helpers.create_command(name, fn, opts)
+  opts = opts or {}
+  vim.api.nvim_create_user_command(name, fn, opts)
+end
+
+function helpers.parse_date(date_string)
+  local year, month, day = date_string:match("(%d+)-(%d+)-(%d+)")
+  return {
+    year = tonumber(year),
+    month = tonumber(month),
+    day = tonumber(day),
+  }
 end
 
 return helpers
