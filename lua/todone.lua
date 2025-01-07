@@ -27,20 +27,18 @@ function M.open_today()
 
   local file_path = M.config.dir .. "/" .. today_formatted .. ".md"
   if not helpers.check_file_exists(file_path) then
-    helpers.create_file(file_path, today_table)
+    helpers.create_file(file_path, today_table, { include_metadata = M.config.include_metadata })
   end
 
-  local yesterday = os.time() - 86400
-  local formatted_date = "" .. os.date("%B %d, %Y", yesterday)
-
   local lines = helpers.read_file_lines(file_path)
-  helpers.create_floating_window({ lines = lines, file_path = file_path, title = formatted_date })
+  helpers.create_floating_window({ lines = lines, file_path = file_path, title = helpers.replace_home_path(file_path) })
 end
 
 function M.setup(opts)
   opts = opts or {}
-  local dir = helpers.replace_home_path(opts.dir or "~/todone")
+  local dir = helpers.replace_tilde(opts.dir or "~/todone")
   M.config.dir = dir
+  M.config.include_metadata = opts.include_metadata or false
 
   if not helpers.check_dir_exists(M.config.dir) then
     vim.notify("Directory not found: " .. M.config.dir, vim.log.levels.ERROR)

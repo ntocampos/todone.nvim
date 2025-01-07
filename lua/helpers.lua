@@ -12,7 +12,7 @@ end
 --- @param file_path string
 --- @return string[]
 function helpers.read_file_lines(file_path)
-  file_path = helpers.replace_home_path(file_path)
+  file_path = helpers.replace_tilde(file_path)
 
   local file = io.open(file_path, "r")
   if not file then
@@ -66,7 +66,7 @@ function helpers.create_floating_window(opts)
     buffer = buf,
     callback = function()
       if file_path and vim.fn.filereadable(file_path) == 1 then
-        vim.api.nvim_command("write!")
+        vim.api.nvim_command("silent write!")
       end
     end,
   })
@@ -84,9 +84,14 @@ function helpers.create_floating_window(opts)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 end
 
-function helpers.replace_home_path(path)
+function helpers.replace_tilde(path)
   local home = os.getenv("HOME") or ""
   return path:gsub("^~", home)
+end
+
+function helpers.replace_home_path(path)
+  local home = os.getenv("HOME") or ""
+  return path:gsub(home, "~")
 end
 
 function helpers.check_dir_exists(dir)
@@ -109,18 +114,31 @@ local function get_note_metadata(date_table)
       "tags:\n" ..
       "  - daily-notes\n" ..
       "---\n" ..
-      "\n" ..
-      "# " .. formatted_title .. "\n\n"
+      "\n"
 end
 
-function helpers.create_file(file_path, date_table)
+local function get_note_header(date_table)
+  local formatted_title = os.date("%B %d, %Y", os.time(date_table))
+  return "# " .. formatted_title .. "\n\n"
+end
+
+function helpers.create_file(file_path, date_table, opts)
+  opts = opts or {}
+  local include_metadata = opts.include_metadata or false
+
   local file = io.open(file_path, "w")
   if not file then
     vim.notify("Failed to create file: " .. file_path, vim.log.levels.ERROR)
     return
   end
   local metadata = get_note_metadata(date_table)
-  file:write(metadata)
+  local header = get_note_header(date_table)
+
+  if include_metadata then
+    file:write(metadata)
+  end
+
+  file:write(header)
   file:close()
 end
 
