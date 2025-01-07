@@ -1,4 +1,8 @@
 local helpers = require("helpers")
+local pickers = require "telescope.pickers"
+local finders = require "telescope.finders"
+local actions = require "telescope.actions"
+local conf = require("telescope.config").values
 
 local M = {}
 M.config = {}
@@ -53,6 +57,52 @@ function M.open_today()
   })
 end
 
+function M.list()
+  if not M.loaded then
+    vim.notify("todone not loaded", vim.log.levels.ERROR)
+    return
+  end
+
+  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local parsed_files = {}
+  print(vim.inspect(files))
+  for _, file in ipairs(files) do
+    local date = file:match(".*/(%d+-%d+-%d+).md")
+    local file_name = date .. ".md"
+    table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
+  end
+  print(vim.inspect(parsed_files))
+  -- Open list of files using Telescope
+  pickers.new({}, {
+    prompt_title = "Todone Files",
+    finder = finders.new_table {
+      results = files,
+      entry_maker = function(entry)
+        local date = entry:match(".*/(%d+-%d+-%d+).md")
+        local file_name = date .. ".md"
+        return {
+          value = entry,
+          display = file_name,
+          ordinal = file_name,
+          date = date,
+        }
+      end,
+    },
+    sorter = conf.file_sorter(),
+    previewer = conf.file_previewer({}),
+    attach_mappings = function(prompt_bufnr, _)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local selection = require("telescope.actions.state").get_selected_entry()
+        print(vim.inspect(selection))
+        local date = selection.date
+        M.open({ date = date })
+      end)
+      return true
+    end,
+  }):find()
+end
+
 function M.setup(opts)
   opts = opts or {}
   local dir = helpers.replace_tilde(opts.dir or "~/todone")
@@ -74,6 +124,12 @@ function M.setup(opts)
     local date = args.fargs[1]
     M.open({ date = date })
   end)
+
+  helpers.create_command("TodoneList", M.list)
+  vim.keymap.set("n", "<leader>tl", M.list, {
+    desc = "List Todone files",
+    silent = true
+  })
 
   M.loaded = true
 end
