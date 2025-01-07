@@ -99,12 +99,28 @@ function helpers.check_file_exists(file_path)
   return stat and stat.type == "file"
 end
 
-function helpers.create_file(file_path)
+local function get_note_metadata(date_table)
+  local formatted_date = os.date("%Y-%m-%d", os.time(date_table))
+  local formatted_title = os.date("%B %d, %Y", os.time(date_table))
+  return "---\n" ..
+      "id: \"" .. formatted_date .. "\"\n" ..
+      "aliases:\n" ..
+      "  - \"" .. formatted_title .. "\"\n" ..
+      "tags:\n" ..
+      "  - daily-notes\n" ..
+      "---\n" ..
+      "\n" ..
+      "# " .. formatted_title .. "\n\n"
+end
+
+function helpers.create_file(file_path, date_table)
   local file = io.open(file_path, "w")
   if not file then
     vim.notify("Failed to create file: " .. file_path, vim.log.levels.ERROR)
     return
   end
+  local metadata = get_note_metadata(date_table)
+  file:write(metadata)
   file:close()
 end
 

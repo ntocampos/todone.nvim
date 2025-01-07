@@ -21,10 +21,13 @@ function M.open_today()
     return
   end
 
-  local today = os.date("%Y-%m-%d")
-  local file_path = M.config.dir .. "/" .. today .. ".md"
+  local today_table = os.date("*t")
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local today_formatted = os.date("%Y-%m-%d", os.time(today_table))
+
+  local file_path = M.config.dir .. "/" .. today_formatted .. ".md"
   if not helpers.check_file_exists(file_path) then
-    helpers.create_file(file_path)
+    helpers.create_file(file_path, today_table)
   end
 
   local yesterday = os.time() - 86400
