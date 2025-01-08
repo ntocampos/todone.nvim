@@ -106,7 +106,22 @@ local function create_floating_window(opts)
     vim.api.nvim_buf_delete(buf, { force = true })
   end
 
+  local toggle_task = function()
+    local line = vim.api.nvim_get_current_line()
+    local new_line = ""
+    if line:find("- %[% %]") then
+      new_line = line:gsub("- %[% %]", "- [x]")
+    elseif line:find("- %[x%]") then
+      new_line = line:gsub("- %[x%]", "- [ ]")
+    else
+      new_line = line
+    end
+    vim.api.nvim_set_current_line(new_line)
+  end
+
   set_buffer_keymap("n", "q", close_win, buf)
+  set_buffer_keymap("n", "<esc>", close_win, buf)
+  set_buffer_keymap("n", "<enter>", toggle_task, buf)
 
   local lines = opts.lines or {}
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -217,7 +232,6 @@ local function create_telescope_picker(files, title)
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
         local selection = require("telescope.actions.state").get_selected_entry()
-        print(vim.inspect(selection))
         local date = selection.date
         M.open({ date = date })
       end)
@@ -286,13 +300,11 @@ function M.list()
 
   local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
   local parsed_files = {}
-  print(vim.inspect(files))
   for _, file in ipairs(files) do
     local date = file:match(".*/(%d+-%d+-%d+).md")
     local file_name = date .. ".md"
     table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
   end
-  print(vim.inspect(parsed_files))
   create_telescope_picker(files, "Todone Files")
 end
 
@@ -318,7 +330,6 @@ function M.grep()
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
         local selection = require("telescope.actions.state").get_selected_entry()
-        print(vim.inspect(selection))
         local filename = selection.filename
         local date = filename:match(".*/(%d+-%d+-%d+).md")
         M.open({ date = date })
@@ -345,7 +356,6 @@ function M.list_pending()
       end
     end
   end
-  print(vim.inspect(parsed_files))
   create_telescope_picker(parsed_files, "Todone Files with Pending Tasks")
 end
 
