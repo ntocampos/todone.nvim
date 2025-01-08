@@ -51,6 +51,77 @@ local function read_file_lines(file_path)
   return lines
 end
 
+--- @return string[]
+local function get_priority_lines()
+  local today_formatted = os.date("%Y-%m-%d")
+  local file_path = M.config.dir .. "/" .. today_formatted .. ".md"
+  local lines = read_file_lines(file_path)
+  local priority_lines = {}
+  for _, line in ipairs(lines) do
+    if line:find("- %[% %]") then
+      table.insert(priority_lines, line)
+      break
+    end
+  end
+  return priority_lines
+end
+
+local function get_priority_win_opts(lines)
+  local width = math.min(vim.o.columns * 0.5, #lines[1])
+  local height = #lines
+  local float_position = M.config.float_position
+  local row, col = 0, 0
+  if float_position == "bottomright" then
+    row = vim.o.lines - height - 2
+    col = vim.o.columns - width - 2
+  elseif float_position == "topright" then
+    row = 1
+    col = vim.o.columns - width - 2
+  end
+
+  return {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = "minimal",
+    border = "rounded",
+    title = "  Priority  ",
+    title_pos = "center",
+  }
+end
+
+local function render_priority_window()
+  if not M.float_buf then
+    M.float_buf = vim.api.nvim_create_buf(false, true)
+  end
+  local priority_lines = get_priority_lines()
+  if #priority_lines == 0 then
+    priority_lines = { "No pending tasks for today 🎉" }
+  end
+
+  vim.api.nvim_buf_set_lines(M.float_buf, 0, -1, false, priority_lines)
+  local win_opts = get_priority_win_opts(priority_lines)
+
+  M.float_win_id = vim.api.nvim_open_win(M.float_buf, false, win_opts)
+end
+
+local function update_priority_window()
+  if not M.float_win_id or not M.float_buf then
+    return
+  end
+
+  local priority_lines = get_priority_lines()
+  if #priority_lines == 0 then
+    priority_lines = { "No pending tasks for today 🎉" }
+  end
+
+  vim.api.nvim_buf_set_lines(M.float_buf, 0, -1, false, priority_lines)
+  local win_opts = get_priority_win_opts(priority_lines)
+  vim.api.nvim_win_set_config(M.float_win_id, win_opts)
+end
+
 --- @param opts {
 ---   width: number,
 ---   height: number,
@@ -95,6 +166,7 @@ local function create_floating_window(opts)
     callback = function()
       if file_path and vim.fn.filereadable(file_path) == 1 then
         vim.api.nvim_command("silent write!")
+        update_priority_window()
       end
     end,
   })
@@ -345,11 +417,29 @@ function M.list_pending()
   create_telescope_picker(parsed_files, "Todone Files with Pending Tasks")
 end
 
+function M.toggle_float_priority()
+  if not M.loaded then
+    vim.notify("todone not loaded", vim.log.levels.ERROR)
+    return
+  end
+
+  if M.float_win_id then
+    vim.api.nvim_win_close(M.float_win_id, true)
+    vim.api.nvim_buf_delete(M.float_buf, { force = true })
+    M.float_win_id = nil
+    M.float_buf = nil
+    return
+  end
+
+  render_priority_window()
+end
+
 function M.setup(opts)
   opts = opts or {}
   local dir = replace_tilde(opts.dir or "~/todone")
   M.config.dir = dir
   M.config.include_metadata = opts.include_metadata or false
+  M.config.float_position = opts.float_position or "bottomright"
   local keys = opts.keys or {}
 
   if not check_dir_exists(M.config.dir) then
@@ -394,6 +484,14 @@ function M.setup(opts)
     })
   end
 
+  create_command("TodoneToggleFloat", M.toggle_float_priority)
+  if keys.toggle_float then
+    vim.keymap.set("n", keys.toggle_float, M.toggle_float_priority, {
+      desc = "Toggle Todone floating priority",
+      silent = true
+    })
+  end
+
   M.loaded = true
 end
 
@@ -405,7 +503,9 @@ M.setup {
     list = "<leader>tl",
     grep = "<leader>tg",
     pending = "<leader>tp",
+    toggle_float = "<leader>tf",
   },
+  float_position = "topright",
 }
 
 return M
