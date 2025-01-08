@@ -120,7 +120,6 @@ local function create_floating_window(opts)
   end
 
   set_buffer_keymap("n", "q", close_win, buf)
-  set_buffer_keymap("n", "<esc>", close_win, buf)
   set_buffer_keymap("n", "<enter>", toggle_task, buf)
 
   local lines = opts.lines or {}
