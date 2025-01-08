@@ -274,21 +274,8 @@ function M.open_today()
     return
   end
 
-  local today_table = os.date("*t")
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local today_formatted = os.date("%Y-%m-%d", os.time(today_table))
-
-  local file_path = M.config.dir .. "/" .. today_formatted .. ".md"
-  if not check_file_exists(file_path) then
-    create_file(file_path, today_table, { include_metadata = M.config.include_metadata })
-  end
-
-  local lines = read_file_lines(file_path)
-  create_floating_window({
-    lines = lines,
-    file_path = file_path,
-    title = replace_home_path(file_path)
-  })
+  local today_formatted = os.date("%Y-%m-%d")
+  M.open({ date = today_formatted })
 end
 
 function M.list()
