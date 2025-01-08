@@ -328,6 +328,27 @@ function M.grep()
   })
 end
 
+function M.list_pending()
+  if not M.loaded then
+    vim.notify("todone not loaded", vim.log.levels.ERROR)
+    return
+  end
+
+  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local parsed_files = {}
+  for _, file_path in ipairs(files) do
+    local file = io.open(file_path)
+    if file then
+      local content = file:read("*a")
+      if content:find("- %[% %]") then
+        table.insert(parsed_files, file_path)
+      end
+    end
+  end
+  print(vim.inspect(parsed_files))
+  create_telescope_picker(parsed_files, "Todone Files with Pending Tasks")
+end
+
 function M.setup(opts)
   opts = opts or {}
   local dir = replace_tilde(opts.dir or "~/todone")
@@ -369,6 +390,14 @@ function M.setup(opts)
     })
   end
 
+  create_command("TodonePending", M.list_pending)
+  if keys.pending then
+    vim.keymap.set("n", keys.pending, M.list_pending, {
+      desc = "List Todone files with pending tasks",
+      silent = true
+    })
+  end
+
   M.loaded = true
 end
 
@@ -379,6 +408,7 @@ M.setup {
     open_today = "<leader>tt",
     list = "<leader>tl",
     grep = "<leader>tg",
+    pending = "<leader>tp",
   },
 }
 
