@@ -195,6 +195,37 @@ local function parse_date(date_string)
   }
 end
 
+local function create_telescope_picker(files, title)
+  pickers.new({}, {
+    prompt_title = title,
+    finder = finders.new_table {
+      results = files,
+      entry_maker = function(entry)
+        local date = entry:match(".*/(%d+-%d+-%d+).md")
+        local file_name = date .. ".md"
+        return {
+          value = entry,
+          display = file_name,
+          ordinal = file_name,
+          date = date,
+        }
+      end,
+    },
+    sorter = conf.file_sorter(),
+    previewer = conf.file_previewer({}),
+    attach_mappings = function(prompt_bufnr, _)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local selection = require("telescope.actions.state").get_selected_entry()
+        print(vim.inspect(selection))
+        local date = selection.date
+        M.open({ date = date })
+      end)
+      return true
+    end,
+  }):find()
+end
+
 --- Plugin API
 
 function M.open(opts)
@@ -262,35 +293,39 @@ function M.list()
     table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
   end
   print(vim.inspect(parsed_files))
-  -- Open list of files using Telescope
-  pickers.new({}, {
-    prompt_title = "Todone Files",
-    finder = finders.new_table {
-      results = files,
-      entry_maker = function(entry)
-        local date = entry:match(".*/(%d+-%d+-%d+).md")
-        local file_name = date .. ".md"
-        return {
-          value = entry,
-          display = file_name,
-          ordinal = file_name,
-          date = date,
-        }
-      end,
-    },
-    sorter = conf.file_sorter(),
-    previewer = conf.file_previewer({}),
+  create_telescope_picker(files, "Todone Files")
+end
+
+function M.grep()
+  if not M.loaded then
+    vim.notify("todone not loaded", vim.log.levels.ERROR)
+    return
+  end
+
+  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local parsed_files = {}
+  for _, file in ipairs(files) do
+    local date = file:match(".*/(%d+-%d+-%d+).md")
+    local file_name = date .. ".md"
+    table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
+  end
+  -- Open Telescope's live grep
+  require('telescope.builtin').live_grep({
+    prompt_title = "Todone Live Grep",
+    search_dirs = { M.config.dir },
+    cwd = M.config.dir,
     attach_mappings = function(prompt_bufnr, _)
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
         local selection = require("telescope.actions.state").get_selected_entry()
         print(vim.inspect(selection))
-        local date = selection.date
+        local filename = selection.filename
+        local date = filename:match(".*/(%d+-%d+-%d+).md")
         M.open({ date = date })
       end)
       return true
     end,
-  }):find()
+  })
 end
 
 function M.setup(opts)
@@ -298,6 +333,7 @@ function M.setup(opts)
   local dir = replace_tilde(opts.dir or "~/todone")
   M.config.dir = dir
   M.config.include_metadata = opts.include_metadata or false
+  local keys = opts.keys or {}
 
   if not check_dir_exists(M.config.dir) then
     vim.notify("Directory not found: " .. M.config.dir, vim.log.levels.ERROR)
@@ -305,10 +341,12 @@ function M.setup(opts)
   end
 
   create_command("TodoneToday", M.open_today)
-  vim.keymap.set("n", "<leader>tt", M.open_today, {
-    desc = "Open Todone in today's view",
-    silent = true
-  })
+  if keys.open_today then
+    vim.keymap.set("n", keys.open_today, M.open_today, {
+      desc = "Open Todone in today's view",
+      silent = true
+    })
+  end
 
   create_command("TodoneOpen", function(args)
     local date = args.fargs[1]
@@ -316,10 +354,20 @@ function M.setup(opts)
   end)
 
   create_command("TodoneList", M.list)
-  vim.keymap.set("n", "<leader>tl", M.list, {
-    desc = "List Todone files",
-    silent = true
-  })
+  if keys.list then
+    vim.keymap.set("n", keys.list, M.list, {
+      desc = "List Todone files",
+      silent = true
+    })
+  end
+
+  create_command("TodoneGrep", M.grep)
+  if keys.grep then
+    vim.keymap.set("n", keys.grep, M.grep, {
+      desc = "Grep Todone files",
+      silent = true
+    })
+  end
 
   M.loaded = true
 end
@@ -330,6 +378,7 @@ M.setup {
   keys = {
     open_today = "<leader>tt",
     list = "<leader>tl",
+    grep = "<leader>tg",
   },
 }
 
