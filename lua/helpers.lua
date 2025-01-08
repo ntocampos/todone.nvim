@@ -118,7 +118,7 @@ local function get_note_metadata(date_table)
 end
 
 local function get_note_header(date_table)
-  local formatted_title = os.date("%B %d, %Y", os.time(date_table))
+  local formatted_title = os.date("%A, %B %d, %Y", os.time(date_table))
   return "# " .. formatted_title .. "\n\n"
 end
 

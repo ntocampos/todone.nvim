@@ -140,7 +140,6 @@ M.setup {
     open_today = "<leader>tt",
     list = "<leader>tl",
   },
-
 }
 -- M.open_today()
 
