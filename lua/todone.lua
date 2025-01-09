@@ -67,8 +67,10 @@ local function get_priority_lines()
 end
 
 local function get_priority_win_opts(lines)
-  local width = math.min(vim.o.columns * 0.5, #lines[1])
-  local height = #lines
+  local first_line = lines[1] or ""
+  local width = math.min(vim.o.columns * 0.4, #first_line)
+  local wrap_amunt = math.ceil(#first_line / width)
+  local height = math.min(vim.o.lines * 0.2, wrap_amunt)
   local float_position = M.config.float_position
   local row, col = 0, 0
   if float_position == "bottomright" then
@@ -105,6 +107,7 @@ local function render_priority_window()
   local win_opts = get_priority_win_opts(priority_lines)
 
   M.float_win_id = vim.api.nvim_open_win(M.float_buf, false, win_opts)
+  vim.api.nvim_set_option_value("wrap", true, { win = M.float_win_id })
 end
 
 local function update_priority_window()
@@ -137,10 +140,12 @@ local function create_floating_window(opts)
   local buf = vim.api.nvim_create_buf(false, false)
   if file_path ~= "" then
     vim.api.nvim_buf_set_name(buf, file_path)
-    vim.api.nvim_set_option_value("buftype", "", { buf = buf })
+    vim.api.nvim_set_option_value('filetype', 'markdown', { buf = buf })
+    vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
   end
 
-  vim.bo[buf].filetype = "markdown"
+  local lines = opts.lines or {}
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
   local float_width = opts.width or 80
   local float_height = opts.height or 20
@@ -160,6 +165,7 @@ local function create_floating_window(opts)
 
   local win_id = vim.api.nvim_open_win(buf, true, win_opts)
   local augroup = vim.api.nvim_create_augroup("FloatingWindowAutoSave", { clear = true })
+
   vim.api.nvim_create_autocmd("WinClosed", {
     group = augroup,
     buffer = buf,
@@ -172,6 +178,8 @@ local function create_floating_window(opts)
   })
   vim.api.nvim_set_option_value("cursorline", true, { win = win_id })
   vim.api.nvim_set_option_value("number", true, { win = win_id })
+  vim.api.nvim_set_option_value("relativenumber", true, { win = win_id })
+  vim.api.nvim_set_option_value("wrap", true, { win = win_id })
 
   local close_win = function()
     vim.api.nvim_win_close(win_id, true)
@@ -193,9 +201,6 @@ local function create_floating_window(opts)
 
   set_buffer_keymap("n", "q", close_win, buf)
   set_buffer_keymap("n", "<enter>", toggle_task, buf)
-
-  local lines = opts.lines or {}
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 end
 
 --- @param dir string
