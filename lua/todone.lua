@@ -140,12 +140,22 @@ local function create_floating_window(opts)
   local buf = vim.api.nvim_create_buf(false, false)
   if file_path ~= "" then
     vim.api.nvim_buf_set_name(buf, file_path)
-    vim.api.nvim_set_option_value('filetype', 'markdown', { buf = buf })
-    vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
   end
 
+  vim.api.nvim_set_option_value('filetype', 'markdown', { buf = buf })
+  vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
+  vim.api.nvim_set_option_value('undofile', false, { buf = buf })
+
+  -- Set the lines in the buffer without triggering undo history
   local lines = opts.lines or {}
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_call(buf, function()
+    local old_undolevels = vim.api.nvim_get_option_value("undolevels", { buf = buf })
+    -- Temporarily disable undo
+    vim.api.nvim_set_option_value("undolevels", -1, { buf = buf })
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    -- Re-enable undo
+    vim.api.nvim_set_option_value("undolevels", old_undolevels, { buf = buf })
+  end)
 
   local float_width = opts.width or 80
   local float_height = opts.height or 20
