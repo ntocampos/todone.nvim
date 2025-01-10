@@ -54,7 +54,7 @@ end
 --- @return string[]
 local function get_priority_lines()
   local today_formatted = os.date("%Y-%m-%d")
-  local file_path = M.config.dir .. "/" .. today_formatted .. ".md"
+  local file_path = M.config.root_dir .. "/" .. today_formatted .. ".md"
   local lines = read_file_lines(file_path)
   local priority_lines = {}
   for _, line in ipairs(lines) do
@@ -343,7 +343,7 @@ function M.open(opts)
   local date_table = parse_date(date)
   ---@diagnostic disable-next-line: param-type-mismatch
   local date_formatted = os.date("%Y-%m-%d", os.time(date_table))
-  local file_path = M.config.dir .. "/" .. date_formatted .. ".md"
+  local file_path = M.config.root_dir .. "/" .. date_formatted .. ".md"
   if not check_file_exists(file_path) then
     create_file(file_path, date_table, { include_metadata = M.config.include_metadata })
   end
@@ -371,7 +371,7 @@ function M.list()
     return
   end
 
-  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local files = vim.fn.glob(M.config.root_dir .. "/*.md", false, true)
   local parsed_files = {}
   for _, file in ipairs(files) do
     local date = file:match(".*/(%d+-%d+-%d+).md")
@@ -387,7 +387,7 @@ function M.grep()
     return
   end
 
-  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local files = vim.fn.glob(M.config.root_dir .. "/*.md", false, true)
   local parsed_files = {}
   for _, file in ipairs(files) do
     local date = file:match(".*/(%d+-%d+-%d+).md")
@@ -397,8 +397,8 @@ function M.grep()
   -- Open Telescope's live grep
   require('telescope.builtin').live_grep({
     prompt_title = "Todone Live Grep",
-    search_dirs = { M.config.dir },
-    cwd = M.config.dir,
+    search_dirs = { M.config.root_dir },
+    cwd = M.config.root_dir,
     attach_mappings = function(prompt_bufnr, _)
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
@@ -418,7 +418,7 @@ function M.list_pending()
     return
   end
 
-  local files = vim.fn.glob(M.config.dir .. "/*.md", false, true)
+  local files = vim.fn.glob(M.config.root_dir .. "/*.md", false, true)
   local parsed_files = {}
   for _, file_path in ipairs(files) do
     local file = io.open(file_path)
@@ -467,11 +467,11 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  M.config.dir = replace_tilde(opts.dir or "~/todone")
+  M.config.root_dir = replace_tilde(opts.root_dir or "~/todone")
   M.config.include_metadata = opts.include_metadata or false
   M.config.float_position = get_float_position(opts.float_position)
 
-  ensure_dir_exists(M.config.dir)
+  ensure_dir_exists(M.config.root_dir)
 
   create_command("TodoneToday", M.open_today)
   create_command("TodoneOpen", function(args)
