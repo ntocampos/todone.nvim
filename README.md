@@ -1,6 +1,6 @@
 # Todone
 
-<!--Maybe a video?-->
+https://github.com/user-attachments/assets/c38009e9-b3fa-4fbb-870c-37739921866c
 
 Todone is a plugin for managing your daily tasks inside Neovim using a simple and intuitive interface.
 
