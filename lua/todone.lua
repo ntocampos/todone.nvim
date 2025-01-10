@@ -449,78 +449,41 @@ function M.toggle_float_priority()
   render_priority_window()
 end
 
+local function get_float_position(position)
+  if position == "topright" or position == "bottomright" then
+    return position
+  end
+  return "topright"
+end
+
+local function ensure_dir_exists(dir)
+  if not check_dir_exists(dir) then
+    local success, _ = vim.fn.mkdir(dir, "p")
+    if not success then
+      vim.notify("Failed to create directory: " .. dir, vim.log.levels.ERROR)
+    end
+  end
+end
+
 function M.setup(opts)
   opts = opts or {}
-  local dir = replace_tilde(opts.dir or "~/todone")
-  M.config.dir = dir
+  M.config.dir = replace_tilde(opts.dir or "~/todone")
   M.config.include_metadata = opts.include_metadata or false
-  M.config.float_position = opts.float_position or "bottomright"
-  local keys = opts.keys or {}
+  M.config.float_position = get_float_position(opts.float_position)
 
-  if not check_dir_exists(M.config.dir) then
-    vim.notify("Directory not found: " .. M.config.dir, vim.log.levels.ERROR)
-    return
-  end
+  ensure_dir_exists(M.config.dir)
 
   create_command("TodoneToday", M.open_today)
-  if keys.open_today then
-    vim.keymap.set("n", keys.open_today, M.open_today, {
-      desc = "Open Todone in today's view",
-      silent = true
-    })
-  end
-
   create_command("TodoneOpen", function(args)
     local date = args.fargs[1]
     M.open({ date = date })
   end)
-
   create_command("TodoneList", M.list)
-  if keys.list then
-    vim.keymap.set("n", keys.list, M.list, {
-      desc = "List Todone files",
-      silent = true
-    })
-  end
-
   create_command("TodoneGrep", M.grep)
-  if keys.grep then
-    vim.keymap.set("n", keys.grep, M.grep, {
-      desc = "Grep Todone files",
-      silent = true
-    })
-  end
-
   create_command("TodonePending", M.list_pending)
-  if keys.pending then
-    vim.keymap.set("n", keys.pending, M.list_pending, {
-      desc = "List Todone files with pending tasks",
-      silent = true
-    })
-  end
-
   create_command("TodoneToggleFloat", M.toggle_float_priority)
-  if keys.toggle_float then
-    vim.keymap.set("n", keys.toggle_float, M.toggle_float_priority, {
-      desc = "Toggle Todone floating priority",
-      silent = true
-    })
-  end
 
   M.loaded = true
 end
-
--- TODO: remove this setup call
-M.setup {
-  dir = "~/Developer/Work/todone",
-  keys = {
-    open_today = "<leader>tt",
-    list = "<leader>tl",
-    grep = "<leader>tg",
-    pending = "<leader>tp",
-    toggle_float = "<leader>tf",
-  },
-  float_position = "topright",
-}
 
 return M
