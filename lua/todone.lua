@@ -66,6 +66,18 @@ local function get_priority_lines()
   return priority_lines
 end
 
+--- @param lines string[]
+--- @return {
+---  relative: string,
+---  width: number,
+---  height: number,
+---  row: number,
+---  col: number,
+---  style: string,
+---  border: string,
+---  title: string,
+---  title_pos: string,
+--- }
 local function get_priority_win_opts(lines)
   local first_line = lines[1] or ""
   local width = math.min(vim.o.columns * 0.4, #first_line)
@@ -92,6 +104,15 @@ local function get_priority_win_opts(lines)
     title = "  Priority  ",
     title_pos = "center",
   }
+end
+
+--- @return boolean
+local function check_telescope_installed()
+  if not pcall(require, "telescope") then
+    vim.notify("Telescope is not installed", vim.log.levels.ERROR)
+    return false
+  end
+  return true
 end
 
 local function render_priority_window()
@@ -297,6 +318,10 @@ local function parse_date(date_string)
 end
 
 local function create_telescope_picker(files, title)
+  if not check_telescope_installed() then
+    return
+  end
+
   pickers.new({}, {
     prompt_title = title,
     finder = finders.new_table {
@@ -324,6 +349,22 @@ local function create_telescope_picker(files, title)
       return true
     end,
   }):find()
+end
+
+local function get_float_position(position)
+  if position == "topright" or position == "bottomright" then
+    return position
+  end
+  return "topright"
+end
+
+local function ensure_dir_exists(dir)
+  if not check_dir_exists(dir) then
+    local success, _ = vim.fn.mkdir(dir, "p")
+    if not success then
+      vim.notify("Failed to create directory: " .. dir, vim.log.levels.ERROR)
+    end
+  end
 end
 
 --- Plugin API
@@ -384,6 +425,9 @@ end
 function M.grep()
   if not M.loaded then
     vim.notify("todone not loaded", vim.log.levels.ERROR)
+    return
+  end
+  if not check_telescope_installed() then
     return
   end
 
@@ -447,22 +491,6 @@ function M.toggle_float_priority()
   end
 
   render_priority_window()
-end
-
-local function get_float_position(position)
-  if position == "topright" or position == "bottomright" then
-    return position
-  end
-  return "topright"
-end
-
-local function ensure_dir_exists(dir)
-  if not check_dir_exists(dir) then
-    local success, _ = vim.fn.mkdir(dir, "p")
-    if not success then
-      vim.notify("Failed to create directory: " .. dir, vim.log.levels.ERROR)
-    end
-  end
 end
 
 function M.setup(opts)
