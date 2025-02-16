@@ -360,24 +360,49 @@ local function create_telescope_picker(opts)
   end
 end
 
-local function create_snacks_picker(title)
-  local snacks_picker = require "snacks.picker"
-  snacks_picker.files({
-    finder = "files",
-    format = "file",
-    title = title,
-    show_empty = true,
-    hidden = false,
-    ignored = false,
-    follow = false,
-    supports_live = true,
-    dirs = { M.config.root_dir },
-    confirm = function(picker, item, action)
-      local date = item.file:match(".*/(%d+-%d+-%d+).md")
-      picker:close()
-      M.open({ date = date })
-    end,
-  })
+local function create_snacks_picker(opts)
+  local title = opts.title or "Todone Files"
+  local type = opts.type or "files"
+  local pattern = opts.pattern or ""
+  local snacks_picker = require("snacks.picker")
+  pattern = pattern:gsub("%[", "\\["):gsub("%]", "\\]")
+
+  if type == "files" then
+    snacks_picker.files({
+      finder = "files",
+      format = "file",
+      title = title,
+      show_empty = true,
+      hidden = false,
+      ignored = false,
+      follow = false,
+      supports_live = true,
+      cwd = M.config.root_dir,
+      confirm = function(picker, item, _)
+        local date = item.file:match("(%d+-%d+-%d+).md")
+        picker:close()
+        M.open({ date = date })
+      end,
+    })
+  end
+
+  if type == "grep" then
+    snacks_picker.grep_word({
+      finder = "grep",
+      format = "file",
+      title = title,
+      show_empty = true,
+      search = pattern,
+      live = false,
+      supports_live = true,
+      dirs = { M.config.root_dir },
+      confirm = function(picker, item, action)
+        local date = item.file:match("(%d+-%d+-%d+).md")
+        picker:close()
+        M.open({ date = date })
+      end,
+    })
+  end
 end
 
 local function create_picker(opts)
@@ -459,7 +484,7 @@ function M.list()
     local file_name = date .. ".md"
     table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
   end
-  create_picker({ title = "Todone Files", type = "files" })
+  create_picker({ title = "Todone – Files", type = "files" })
 end
 
 function M.grep()
@@ -504,7 +529,7 @@ function M.list_pending()
   end
 
   create_picker({
-    title = "Todone Pending Tasks",
+    title = "Todone – Pending tasks",
     type = "grep",
     pattern = "- [ ]"
   })
