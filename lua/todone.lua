@@ -232,8 +232,14 @@ local function create_floating_window(opts)
     vim.api.nvim_set_current_line(new_line)
   end
 
+  local insert_incomplete_task = function()
+    vim.api.nvim_put({ "- [ ] " }, "l", true, true)
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("A", true, false, true), "n", false)
+  end
+
   set_buffer_keymap("n", "q", close_win, buf)
   set_buffer_keymap("n", "<enter>", toggle_task, buf)
+  set_buffer_keymap("n", "N", insert_incomplete_task, buf)
 end
 
 --- @param dir string

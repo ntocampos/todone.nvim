@@ -15,13 +15,17 @@ Todone is a plugin for managing your daily tasks inside Neovim using a simple an
 
 ## Installation 
 
-> [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) is optional, but highly recommended for a better experience.
+> This plugin uses pickers to list files and supports either [Snacks.nvim](https://github.com/folke/snacks.nvim) picker or [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim). They are optional, but highly recommended.
 
 Using [Lazy](https://github.com/folke/lazy.nvim):
 ```lua
 use {
   'ntocampos/todone.nvim',
-  dependencies = { "nvim-telescope/telescope.nvim", optional = true },
+  dependencies = {
+    -- Either one or the other
+    { "nvim-telescope/telescope.nvim", optional = true },
+    { "folke/snacks.nvim", optional = true },
+  },
   opts = {
     root_dir = "~/todone/",
     float_position = "topright",
@@ -29,7 +33,7 @@ use {
   keys = {
     { "<leader>tt", "<cmd>TodoneToday<cr>",       desc = "Open today's notes" },
     { "<leader>tf", "<cmd>TodoneToggleFloat<cr>", desc = "Toggle priority float" },
-    -- The commands below require telescope.nvim
+    -- The commands below require a picker
     { "<leader>tl", "<cmd>TodoneList<cr>",        desc = "List all notes" },
     { "<leader>tg", "<cmd>TodoneGrep<cr>",        desc = "Search inside all notes" },
     { "<leader>tp", "<cmd>TodonePending<cr>",     desc = "List notes with pending tasks" },
@@ -41,7 +45,7 @@ use {
 
 After installing Todone, you can start using the commands or keymaps to interact with it.
 When you open a note, it will be created if it doesn't exist, and it will be rendered in a floating window. To exit and save the note, press `q`.
-Inside the note, you can press `enter` to toggle a markdown checkbox as done or undone.
+Inside the note, you can press `enter` to toggle a markdown checkbox as done or undone. You can also press `N` on normal mode to append a new task.
 The notes are simple markdown files, so you can use all markdown features and also edit them outside Neovim.
 
 ### Commands
