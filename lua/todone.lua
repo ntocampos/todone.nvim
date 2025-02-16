@@ -367,6 +367,12 @@ local function create_snacks_picker(opts)
   local snacks_picker = require("snacks.picker")
   pattern = pattern:gsub("%[", "\\["):gsub("%]", "\\]")
 
+  local confirm = function(picker, item, _)
+    local date = item.file:match("(%d+-%d+-%d+).md")
+    picker:close()
+    M.open({ date = date })
+  end
+
   if type == "files" then
     snacks_picker.files({
       finder = "files",
@@ -378,11 +384,9 @@ local function create_snacks_picker(opts)
       follow = false,
       supports_live = true,
       cwd = M.config.root_dir,
-      confirm = function(picker, item, _)
-        local date = item.file:match("(%d+-%d+-%d+).md")
-        picker:close()
-        M.open({ date = date })
-      end,
+      matcher = { sort_empty = true },
+      sort = { fields = { "file:desc" } },
+      confirm = confirm,
     })
   end
 
@@ -396,11 +400,8 @@ local function create_snacks_picker(opts)
       live = false,
       supports_live = true,
       dirs = { M.config.root_dir },
-      confirm = function(picker, item, action)
-        local date = item.file:match("(%d+-%d+-%d+).md")
-        picker:close()
-        M.open({ date = date })
-      end,
+      sort_empty = true,
+      confirm = confirm,
     })
   end
 end
