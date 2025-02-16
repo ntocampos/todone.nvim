@@ -1,8 +1,3 @@
-local pickers = require "telescope.pickers"
-local finders = require "telescope.finders"
-local actions = require "telescope.actions"
-local conf = require("telescope.config").values
-
 local M = {}
 M.config = {}
 M.loaded = false
@@ -109,7 +104,14 @@ end
 --- @return boolean
 local function check_telescope_installed()
   if not pcall(require, "telescope") then
-    vim.notify("Telescope is not installed", vim.log.levels.ERROR)
+    return false
+  end
+  return true
+end
+
+--- @return boolean
+local function check_snacks_installed()
+  if not pcall(require, "snacks.picker") then
     return false
   end
   return true
@@ -317,38 +319,102 @@ local function parse_date(date_string)
   }
 end
 
-local function create_telescope_picker(files, title)
-  if not check_telescope_installed() then
-    return
+local telescopeAttachMappings = function(prompt_bufnr, _)
+  local actions = require "telescope.actions"
+  actions.select_default:replace(function()
+    actions.close(prompt_bufnr)
+    local selection = require("telescope.actions.state").get_selected_entry()
+    local filename = selection.filename
+    local date = filename:match("(%d+-%d+-%d+).md")
+    M.open({ date = date })
+  end)
+  return true
+end
+
+--- @class PickerOptions
+--- @field title string
+--- @field type "files" | "grep"
+--- @field pattern? string
+
+--- @param opts PickerOptions
+local function create_telescope_picker(opts)
+  local title = opts.title or "Todone Files"
+  local type = opts.type or "files"
+  local pattern = opts.pattern or ""
+
+  if type == "files" then
+    require('telescope.builtin').find_files({
+      cwd = M.config.root_dir,
+      prompt_title = title,
+      attach_mappings = telescopeAttachMappings,
+    })
   end
 
-  pickers.new({}, {
-    prompt_title = title,
-    finder = finders.new_table {
-      results = files,
-      entry_maker = function(entry)
-        local date = entry:match(".*/(%d+-%d+-%d+).md")
-        local file_name = date .. ".md"
-        return {
-          value = entry,
-          display = file_name,
-          ordinal = file_name,
-          date = date,
-        }
-      end,
-    },
-    sorter = conf.file_sorter(),
-    previewer = conf.file_previewer({}),
-    attach_mappings = function(prompt_bufnr, _)
-      actions.select_default:replace(function()
-        actions.close(prompt_bufnr)
-        local selection = require("telescope.actions.state").get_selected_entry()
-        local date = selection.date
-        M.open({ date = date })
-      end)
-      return true
-    end,
-  }):find()
+  if type == "grep" then
+    require('telescope.builtin').grep_string({
+      prompt_title = title,
+      cwd = M.config.root_dir,
+      search = pattern,
+      attach_mappings = telescopeAttachMappings,
+    })
+  end
+end
+
+local function create_snacks_picker(opts)
+  local title = opts.title or "Todone Files"
+  local type = opts.type or "files"
+  local pattern = opts.pattern or ""
+  local snacks_picker = require("snacks.picker")
+  pattern = pattern:gsub("%[", "\\["):gsub("%]", "\\]")
+
+  local confirm = function(picker, item, _)
+    local date = item.file:match("(%d+-%d+-%d+).md")
+    picker:close()
+    M.open({ date = date })
+  end
+
+  if type == "files" then
+    snacks_picker.files({
+      finder = "files",
+      format = "file",
+      title = title,
+      show_empty = true,
+      hidden = false,
+      ignored = false,
+      follow = false,
+      supports_live = true,
+      cwd = M.config.root_dir,
+      matcher = { sort_empty = true },
+      sort = { fields = { "file:desc" } },
+      confirm = confirm,
+    })
+  end
+
+  if type == "grep" then
+    snacks_picker.grep_word({
+      finder = "grep",
+      format = "file",
+      title = title,
+      show_empty = true,
+      search = pattern,
+      live = false,
+      supports_live = true,
+      dirs = { M.config.root_dir },
+      sort_empty = true,
+      confirm = confirm,
+    })
+  end
+end
+
+local function create_picker(opts)
+  opts = opts or {}
+  if check_telescope_installed() then
+    create_telescope_picker(opts)
+  elseif check_snacks_installed() then
+    create_snacks_picker(opts)
+  else
+    vim.notify("Neither Telescope nor Snacks is installed", vim.log.levels.ERROR)
+  end
 end
 
 local function get_float_position(position)
@@ -419,7 +485,7 @@ function M.list()
     local file_name = date .. ".md"
     table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
   end
-  create_telescope_picker(files, "Todone Files")
+  create_picker({ title = "Todone – Files", type = "files" })
 end
 
 function M.grep()
@@ -438,6 +504,7 @@ function M.grep()
     local file_name = date .. ".md"
     table.insert(parsed_files, { value = date, display = file_name, ordinal = file_name })
   end
+  local actions = require "telescope.actions"
   -- Open Telescope's live grep
   require('telescope.builtin').live_grep({
     prompt_title = "Todone Live Grep",
@@ -462,18 +529,11 @@ function M.list_pending()
     return
   end
 
-  local files = vim.fn.glob(M.config.root_dir .. "/*.md", false, true)
-  local parsed_files = {}
-  for _, file_path in ipairs(files) do
-    local file = io.open(file_path)
-    if file then
-      local content = file:read("*a")
-      if content:find("- %[% %]") then
-        table.insert(parsed_files, file_path)
-      end
-    end
-  end
-  create_telescope_picker(parsed_files, "Todone Files with Pending Tasks")
+  create_picker({
+    title = "Todone – Pending tasks",
+    type = "grep",
+    pattern = "- [ ]"
+  })
 end
 
 function M.toggle_float_priority()
